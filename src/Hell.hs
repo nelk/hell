@@ -48,7 +48,9 @@ startHell Config{..} =
                   prompt <- configPrompt username (stripHome home pwd)
                   mline <- io (queryInput hd (getInputLine prompt))
                   case mline of
-                    Nothing -> loop
+                    Nothing -> return ()
+                    Just "" -> loop -- Suppress output if they just pressed enter.
+                    Just line | line == "exit" || line == "\x4" -> return () -- Exit conditions.
                     Just line ->
                       do result <- runStatement (fromMaybe "" configRun) line
                          unless (null result)

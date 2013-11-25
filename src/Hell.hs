@@ -10,7 +10,7 @@ module Hell
   where
 
 import Hell.Types
-import Hell.Prelude (run_)
+import Hell.Prelude (run')
 
 import Control.Exception
 import Control.Monad
@@ -108,7 +108,7 @@ runExpression stmt' = do
   where stmt = "return (" ++ toStringCode ++ " (" ++ stmt' ++ ")) :: IO String"
 
 runInShell :: String -> Ghc String
-runInShell stmt = io $ run_ stmt
+runInShell stmt = io $ run' stmt >> return ""
 
 -- | Short-hand utility.
 io :: IO a -> Ghc a

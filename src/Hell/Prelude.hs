@@ -72,7 +72,7 @@ pipeThroughCmd cmd pipe_in pipe_out =
                       case pipe_in of
                         Right _ -> return ()
                         Left s -> maybe (return ()) (flip hPutStr s) stdin_m
-                      _ <- waitForProcess p
+                      --_ <- waitForProcess p
                       return $ maybe (Left "") (Right . UseHandle) stdout_m
 
 toString :: (Typeable a, Show a) => a -> String

@@ -132,31 +132,33 @@ echo = putStrLn
 run' :: String -> IO ExitCode
 run' cmd = system cmd
 
--- Run without input
+-- Run with stdin input
 run_ :: String -> IO String
-run_ cmd = do out <- pipe cmd (Right stdin)
+run_ cmd = do out <- pipeThroughCmd cmd (Right $ Inherit) Inherit
               case out of
                 Left s -> return s
-                Right h -> hGetContents h
+                Right (UseHandle h) -> hGetContents h
+                Right _ -> return ""
 
 -- Run multiple piped commands (with string input into first)
 run :: String -> String -> IO String
-run combined_cmds input = do out <- foldl (>>=) (head cmds $ Left input) (tail cmds)
-                             case out of
-                              Left s -> return s
-                              Right h -> hGetContents h
-  where cmds = map pipe $ split "|" combined_cmds
+run cmd input = do out <- pipeThroughCmd cmd (Left $ input) Inherit
+                   case out of
+                    Left s -> return s
+                    Right (UseHandle h) -> hGetContents h
+                    Right _ -> return ""
 
-pipe :: String -> Either String Handle -> IO (Either String Handle)
-pipe cmd pipe_in = do d <- pwd
-                      (stdin_m, stdout_m, _, _) <- createProcess $
+pipeThroughCmd :: String -> Either String StdStream -> StdStream -> IO (Either String StdStream)
+pipeThroughCmd cmd pipe_in pipe_out =
+                   do d <- pwd
+                      (stdin_m, stdout_m, stderr_m, p) <- createProcess $
                         CreateProcess
                           { cmdspec = ShellCommand cmd
                           , cwd = Just d
                           , env = Nothing
-                          , std_out = CreatePipe
+                          , std_out = pipe_out
                           , std_in = case pipe_in of
-                                      Right h -> UseHandle h
+                                      Right stream -> stream
                                       Left _ -> CreatePipe
                           , std_err = Inherit
                           , close_fds = False
@@ -165,9 +167,8 @@ pipe cmd pipe_in = do d <- pwd
                       case pipe_in of
                         Right _ -> return ()
                         Left s -> maybe (return ()) (flip hPutStr s) stdin_m
-                      --_ <- waitForProcess p -- Not really necessary.
-                      -- TODO handle stderr
-                      return $ maybe (Left "") Right stdout_m
+                      _ <- waitForProcess p
+                      return $ maybe (Left "") (Right . UseHandle) stdout_m
 
 toString :: (Typeable a, Show a) => a -> String
 toString = liftA2 fromMaybe show cast

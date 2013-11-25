@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 -- | A base set of functions for the shell.
 
 module Hell.Prelude where
@@ -15,6 +15,10 @@ import System.Time
 import Data.Time.Clock
 #endif
 import System.Process
+import Data.Maybe
+import Data.Typeable
+import Control.Applicative
+import Data.String.Utils (split)
 
 -- | setCurrentDirectory
 cd :: FilePath -> IO ()
@@ -125,5 +129,42 @@ echo :: String -> IO ()
 echo = putStrLn
 
 -- | system cmd
-run :: String -> IO ExitCode
-run cmd = system cmd
+run_ecode :: String -> IO ExitCode
+run_ecode cmd = system cmd
+
+-- Run without input
+run_ :: String -> IO String
+run_ cmd = run cmd ""
+
+-- Run multiple piped commands (with string input into first)
+run :: String -> String -> IO String
+run combined_cmds input = do out <- foldl (>>=) (head cmds $ Left input) (tail cmds)
+                             case out of
+                              Left s -> return s
+                              Right h -> hGetContents h
+  where cmds = map pipe $ split "|" combined_cmds
+        pipe :: String -> Either String Handle -> IO (Either String Handle)
+        pipe cmd pipe_in = do d <- pwd
+                              (stdin_m, stdout_m, _, _) <- createProcess $
+                                CreateProcess
+                                  { cmdspec = ShellCommand cmd
+                                  , cwd = Just d
+                                  , env = Nothing
+                                  , std_out = CreatePipe
+                                  , std_in = case pipe_in of
+                                              Right h -> UseHandle h
+                                              Left _ -> CreatePipe
+                                  , std_err = Inherit
+                                  , close_fds = False
+                                  , create_group = False
+                                  }
+                              case pipe_in of
+                                Right _ -> return ()
+                                Left s -> maybe (return ()) (flip hPutStr input) stdin_m
+                              --_ <- waitForProcess p -- Not really necessary.
+                              -- TODO handle stderr
+                              return $ maybe (Left "") Right stdout_m
+
+toString :: (Typeable a, Show a) => a -> String
+toString = liftA2 fromMaybe show cast
+

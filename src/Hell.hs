@@ -22,6 +22,7 @@ import System.Console.Haskeline
 import System.Console.Haskeline.IO
 import System.Directory
 import System.Posix.User
+import Data.String.Utils
 
 import GHC
 import GHC.Paths
@@ -54,8 +55,12 @@ startHell Config{..} =
                     Just line ->
                       do result <- runStatement (fromMaybe "" configRun) line
                          unless (null result)
-                                (io (queryInput hd (outputStrLn result)))
+                                (io (queryInput hd (outputStr $ fixNewlines result)))
                          loop))
+
+fixNewlines :: String -> String
+fixNewlines s = if endswith "\n" s' then s' else s' ++ "\n"
+  where s' = replace "\\n" "\n" s
 
 -- | Strip and replace /home/chris/blah with ~/blah.
 stripHome :: FilePath -> FilePath -> FilePath
@@ -68,6 +73,9 @@ setImports :: [String] -> Ghc ()
 setImports =
   mapM (fmap IIDecl . parseImportDecl) >=> setContext
 
+toStringCode :: String
+toStringCode = "(liftA2 fromMaybe show cast)"
+
 -- | Run the given statement.
 runStatement :: String -> String -> Ghc String
 runStatement run stmt' = do
@@ -79,7 +87,7 @@ runStatement run stmt' = do
       gcatch (fmap ignoreUnit (io (fromDyn compiled (return "Bad compile."))))
              (\(e::SomeException) -> return (show e))
 
-  where stmt = "(" ++ run ++ "(" ++ stmt' ++ ")) >>= return . show :: IO String"
+  where stmt = "(" ++ run ++ "(" ++ stmt' ++ ")) >>= return . " ++ toStringCode ++ " :: IO String"
         ignoreUnit "()" = ""
         ignoreUnit x = x
 
@@ -94,7 +102,7 @@ runExpression stmt' = do
       gcatch (io (fromDyn compiled (return "Bad compile.")))
              (\(e::SomeException) -> return (show e))
 
-  where stmt = "return (show (" ++ stmt' ++ ")) :: IO String"
+  where stmt = "return (" ++ toStringCode ++ " (" ++ stmt' ++ ")) :: IO String"
 
 -- | Short-hand utility.
 io :: IO a -> Ghc a

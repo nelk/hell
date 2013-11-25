@@ -27,7 +27,11 @@ instance Default Config where
              ,"System.Directory"
              ,"System.Process"
              ,"System.Environment"
-             ,"Hell.Prelude"]
+             ,"Hell.Prelude"
+             ,"Data.Maybe"
+             ,"Data.Typeable"
+             ,"Control.Applicative"
+             ]
     , configWelcome = "Welcome to Hell!"
     , configPrompt = \username pwd -> return (username ++ ":" ++ pwd ++ "$ ")
     , configRun = Nothing

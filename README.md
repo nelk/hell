@@ -11,6 +11,7 @@ Commands that aren't Haskell are run on the command line - piping through multip
 The command `run :: String -> String -> IO String` allows you to run a single or multiple shell commands with pipes, with input and output as strings.
 You can easily use this command with monadic binds to pipe data between shell programs and Haskell code (see below).
 The convenience function `run_ :: String -> IO String` uses the empty string for input.
+Note: To force an evaluation in Haskell, you can begin the line with ">" - this will allow you to see the ghc compiler error in case the command fails.
 
 
 ## What's it like?

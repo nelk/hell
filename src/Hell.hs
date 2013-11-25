@@ -69,6 +69,13 @@ stripHome home path
   | isPrefixOf home path = "~/" ++ dropWhile (=='/') (drop (length home) path)
   | otherwise            = path
 
+haskellPrefix :: String
+haskellPrefix = ">"
+
+stripHaskellPrefix :: String -> String
+stripHaskellPrefix s | startswith haskellPrefix s = drop (length haskellPrefix) s
+                     | otherwise = s
+
 -- | Import the given modules.
 setImports :: [String] -> Ghc ()
 setImports =
@@ -88,7 +95,7 @@ runStatement run stmt' = do
       gcatch (fmap ignoreUnit (io (fromDyn compiled (return "Bad compile."))))
              (\(e::SomeException) -> return (show e))
 
-  where stmt = "(" ++ run ++ "(" ++ stmt' ++ ")) >>= return . " ++ toStringCode ++ " :: IO String"
+  where stmt = "(" ++ run ++ "(" ++ (stripHaskellPrefix stmt') ++ ")) >>= return . " ++ toStringCode ++ " :: IO String"
         ignoreUnit "()" = ""
         ignoreUnit x = x
 
@@ -98,14 +105,14 @@ runExpression stmt' = do
   result <- gcatch (fmap Right (dynCompileExpr stmt))
                    (\(e::SomeException) -> return (Left e))
   case result of
-    -- TODO - Pass this error along and output it when runInShell exits with an error code as well as the shell error.
-    Left err -> do -- io $ putStrLn $ show err
-                   runInShell stmt'
+    Left err -> if startswith haskellPrefix stmt'
+                then return $ show err
+                else runInShell stmt'
     Right compiled ->
       gcatch (io (fromDyn compiled (return "Bad compile.")))
              (\(e::SomeException) -> return (show e))
 
-  where stmt = "return (" ++ toStringCode ++ " (" ++ stmt' ++ ")) :: IO String"
+  where stmt = "return (" ++ toStringCode ++ " (" ++ (stripHaskellPrefix stmt') ++ ")) :: IO String"
 
 runInShell :: String -> Ghc String
 runInShell stmt = io $ run' stmt >> return ""

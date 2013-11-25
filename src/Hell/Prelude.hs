@@ -38,7 +38,7 @@ runWithExtractedCd cmd = let (_, _, _, groups) = cmd =~ "^ *cd ([^ \"]+)" :: (St
 -- Run with stdin input
 run_ :: String -> IO String
 run_ cmd | isJust (runWithExtractedCd cmd) = fromJust $ runWithExtractedCd cmd
-run_ cmd = do out <- pipeThroughCmd cmd (Right $ Inherit) Inherit
+run_ cmd = do out <- pipeThroughCmd cmd (Right $ Inherit) CreatePipe
               case out of
                 Left s -> return s
                 Right (UseHandle h) -> hGetContents h
@@ -47,7 +47,7 @@ run_ cmd = do out <- pipeThroughCmd cmd (Right $ Inherit) Inherit
 -- Run multiple piped commands (with string input into first)
 run :: String -> String -> IO String
 run cmd _ | isJust (runWithExtractedCd cmd) = fromJust $ runWithExtractedCd cmd
-run cmd input = do out <- pipeThroughCmd cmd (Left $ input) Inherit
+run cmd input = do out <- pipeThroughCmd cmd (Left $ input) CreatePipe
                    case out of
                     Left s -> return s
                     Right (UseHandle h) -> hGetContents h

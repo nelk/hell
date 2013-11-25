@@ -33,6 +33,10 @@ instance Default Config where
              ,"Control.Applicative"
              ]
     , configWelcome = "Welcome to Hell!"
-    , configPrompt = \username pwd -> return (username ++ ":" ++ pwd ++ "$ ")
+    , configPrompt = \username pwd -> let white = "\x1b[37m"
+                                          green = "\x1b[32m"
+                                          magenta = "\x1b[35m"
+                                          yellow = "\x1b[33m"
+                                      in return $ foldl1 (++) [green, username, white, ":", magenta, pwd, yellow, " λ ", white]
     , configRun = Nothing
     }

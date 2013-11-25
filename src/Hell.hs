@@ -10,6 +10,7 @@ module Hell
   where
 
 import Hell.Types
+import Hell.Prelude (run_)
 
 import Control.Exception
 import Control.Monad
@@ -97,12 +98,17 @@ runExpression stmt' = do
   result <- gcatch (fmap Right (dynCompileExpr stmt))
                    (\(e::SomeException) -> return (Left e))
   case result of
-    Left err -> return (show err)
+    -- TODO - Pass this error along and output it when runInShell exits with an error code as well as the shell error.
+    Left err -> do -- io $ putStrLn $ show err
+                   runInShell stmt'
     Right compiled ->
       gcatch (io (fromDyn compiled (return "Bad compile.")))
              (\(e::SomeException) -> return (show e))
 
   where stmt = "return (" ++ toStringCode ++ " (" ++ stmt' ++ ")) :: IO String"
+
+runInShell :: String -> Ghc String
+runInShell stmt = io $ run_ stmt
 
 -- | Short-hand utility.
 io :: IO a -> Ghc a
@@ -111,3 +117,4 @@ io = liftIO
 -- | Set the given flags.
 setFlags :: [ExtensionFlag] -> DynFlags -> DynFlags
 setFlags xs dflags = foldl xopt_set dflags xs
+

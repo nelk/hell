@@ -129,8 +129,8 @@ echo :: String -> IO ()
 echo = putStrLn
 
 -- | system cmd
-run_ecode :: String -> IO ExitCode
-run_ecode cmd = system cmd
+run' :: String -> IO ExitCode
+run' cmd = system cmd
 
 -- Run without input
 run_ :: String -> IO String

@@ -5,9 +5,13 @@ Here lies a prototype/experiment for the following question:
 completion and directory
 awareness?](http://www.reddit.com/r/haskell/comments/1qzhce/using_haskell_to_write_deceptively_powerful/cdidvav?context=3)
 
-It's a simple read-eval-print loop for Haskell that has some simple
-awareness of the current directory and completion works. I whipped
-this up in a few hours, it's only a couple hundred lines of code.
+It's a simple read-eval-print loop for Haskell that has some simple awareness of the current directory and completion works.
+It attempts to evaluate commands as Haskell code and print the output. Showable values and IO values will work.
+Commands that aren't Haskell are run on the command line - piping through multiple commands works.
+The command `run :: String -> String -> IO String` allows you to run a single or multiple shell commands with pipes, with input and output as strings.
+You can easily use this command with monadic binds to pipe data between shell programs and Haskell code (see below).
+The convenience function `run_ :: String -> IO String` uses the empty string for input.
+
 
 ## What's it like?
 
@@ -16,16 +20,17 @@ It looks something like this:
     $ hell
     Welcome to Hell!
     chris:~/$ ls
-    Books
     Desktop
-    Documents
     Downloads
-    Dropbox
-    Emacs
     Music
     Pictures
-    Projects
     Videos
+    chris:~/$ cat /usr/share/dict/words | wc -l
+    99171
+    chris:~/$ run_ "cat /usr/share/dict/words" >>= run "wc -l"
+    99171
+    chris:~/$ run_ "cat /usr/share/dict/words" >>= return . length . lines
+    99171
 
 Some basics are defined.
 
@@ -70,7 +75,7 @@ changes. The Haskeline package does completion at the prompt built-in.
 
 It tries to run the line as an `IO a` statement, if that's the wrong
 type, it evaluates it as an expression, printing the result with
-`print`.
+`print`. If that also fails, it puts the whole command into `run_ "command"`.
 
 The functions like `cd`, `ls`, etc. are defined in `Hell.Prelude`
 which is imported in the default configuration (this is

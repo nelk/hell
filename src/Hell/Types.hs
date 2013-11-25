@@ -31,6 +31,7 @@ instance Default Config where
              ,"Data.Maybe"
              ,"Data.Typeable"
              ,"Control.Applicative"
+             ,"Data.String.Utils"
              ]
     , configWelcome = "Welcome to Hell!"
     , configPrompt = \username pwd -> let white = "\x1b[37m"

@@ -134,7 +134,10 @@ run' cmd = system cmd
 
 -- Run without input
 run_ :: String -> IO String
-run_ cmd = run cmd ""
+run_ cmd = do out <- pipe cmd (Right stdin)
+              case out of
+                Left s -> return s
+                Right h -> hGetContents h
 
 -- Run multiple piped commands (with string input into first)
 run :: String -> String -> IO String
@@ -143,27 +146,28 @@ run combined_cmds input = do out <- foldl (>>=) (head cmds $ Left input) (tail c
                               Left s -> return s
                               Right h -> hGetContents h
   where cmds = map pipe $ split "|" combined_cmds
-        pipe :: String -> Either String Handle -> IO (Either String Handle)
-        pipe cmd pipe_in = do d <- pwd
-                              (stdin_m, stdout_m, _, _) <- createProcess $
-                                CreateProcess
-                                  { cmdspec = ShellCommand cmd
-                                  , cwd = Just d
-                                  , env = Nothing
-                                  , std_out = CreatePipe
-                                  , std_in = case pipe_in of
-                                              Right h -> UseHandle h
-                                              Left _ -> CreatePipe
-                                  , std_err = Inherit
-                                  , close_fds = False
-                                  , create_group = False
-                                  }
-                              case pipe_in of
-                                Right _ -> return ()
-                                Left s -> maybe (return ()) (flip hPutStr input) stdin_m
-                              --_ <- waitForProcess p -- Not really necessary.
-                              -- TODO handle stderr
-                              return $ maybe (Left "") Right stdout_m
+
+pipe :: String -> Either String Handle -> IO (Either String Handle)
+pipe cmd pipe_in = do d <- pwd
+                      (stdin_m, stdout_m, _, _) <- createProcess $
+                        CreateProcess
+                          { cmdspec = ShellCommand cmd
+                          , cwd = Just d
+                          , env = Nothing
+                          , std_out = CreatePipe
+                          , std_in = case pipe_in of
+                                      Right h -> UseHandle h
+                                      Left _ -> CreatePipe
+                          , std_err = Inherit
+                          , close_fds = False
+                          , create_group = False
+                          }
+                      case pipe_in of
+                        Right _ -> return ()
+                        Left s -> maybe (return ()) (flip hPutStr s) stdin_m
+                      --_ <- waitForProcess p -- Not really necessary.
+                      -- TODO handle stderr
+                      return $ maybe (Left "") Right stdout_m
 
 toString :: (Typeable a, Show a) => a -> String
 toString = liftA2 fromMaybe show cast

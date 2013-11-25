@@ -23,6 +23,7 @@ library
                      directory,
                      data-default,
                      MissingH,
+                     regex-posix,
                      unix
   if impl(ghc >= 7.6)
     build-depends:   time

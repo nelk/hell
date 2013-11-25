@@ -9,17 +9,17 @@ module Hell
   ,startHell)
   where
 
+import Prelude hiding (catch)
 import Hell.Types
 import Hell.Prelude (run')
 
 import Control.Exception
 import Control.Monad
-import Control.Monad.Fix
 import Data.Default
 import Data.Dynamic
 import Data.List
 import Data.Maybe
-import System.Console.Haskeline
+import System.Console.Haskeline hiding (catch)
 import System.Console.Haskeline.IO
 import System.Directory
 import System.Posix.User
@@ -35,29 +35,41 @@ startHell :: Config -> IO ()
 startHell Config{..} =
   runGhc
     (Just libdir)
-    (do dflags <- getSessionDynFlags
-        void (setSessionDynFlags
-                (setFlags [Opt_ImplicitPrelude, Opt_OverloadedStrings]
-                          dflags))
-        setImports configImports
-        hd <- io (initializeInput defaultSettings)
-        home <- io getHomeDirectory
-        username <- io getEffectiveUserName
-        unless (null configWelcome)
-               (io (queryInput hd (outputStrLn configWelcome)))
-        fix (\loop ->
-               do pwd <- io getCurrentDirectory
-                  prompt <- configPrompt username (stripHome home pwd)
-                  mline <- io (queryInput hd (getInputLine prompt))
-                  case mline of
-                    Nothing -> return ()
-                    Just "" -> loop -- Suppress output if they just pressed enter.
-                    Just line | line == "exit" || line == "\x4" -> return () -- Exit conditions.
-                    Just line ->
-                      do result <- runStatement (fromMaybe "" configRun) line
-                         unless (null result)
-                                (io (queryInput hd (outputStr $ fixNewlines result)))
-                         loop))
+    ( do dflags <- getSessionDynFlags
+         void (setSessionDynFlags
+                 (setFlags [Opt_ImplicitPrelude, Opt_OverloadedStrings]
+                           dflags))
+         setImports configImports
+         hd <- newHaskelineSession
+         home <- io getHomeDirectory
+         username <- io getEffectiveUserName
+         unless (null configWelcome)
+                (io (queryInput hd (outputStrLn configWelcome)))
+         hellLoop username home hd
+    )
+  where hellLoop username home hd =
+          do pwd <- io getCurrentDirectory
+             prompt <- configPrompt username (stripHome home pwd)
+             mline <- io $ catch (queryInput hd (getInputLine prompt)) ioExceptionHandler
+             case mline of
+               Nothing -> return ()
+               Just "" -> hellLoop username home hd -- Suppress output if they just pressed enter.
+               Just "\n" -> do io $ cancelInput hd
+                               hd' <- newHaskelineSession
+                               hellLoop username home hd'
+               Just line | line == "exit" || line == "\x4" -> return () -- Exit conditions.
+               Just line ->
+                 do result <- runStatement (fromMaybe "" configRun) line
+                    unless (null result)
+                           (io (queryInput hd (outputStr $ fixNewlines result)))
+                    hellLoop username home hd
+
+newHaskelineSession :: Ghc InputState
+newHaskelineSession = io (initializeInput defaultSettings { historyFile = Just "~/.hell_history"})
+
+ioExceptionHandler :: AsyncException -> IO (Maybe String)
+ioExceptionHandler UserInterrupt = return $ Just "\n"
+ioExceptionHandler e = throw e
 
 fixNewlines :: String -> String
 fixNewlines s = if endswith "\n" s' then s' else s' ++ "\n"

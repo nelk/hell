@@ -17,7 +17,7 @@ import Data.Typeable
 import Control.Applicative
 import Text.Regex.Posix
 
--- TODO - Remove "/bin/sh: 1: " from error messages; have a way to give ghc error (prefix?); prevent ctrl+c from leaving.
+-- TODO - Remove "/bin/sh: 1: " from error messages.
 
 -- | setCurrentDirectory
 cd :: FilePath -> IO ()
@@ -56,7 +56,7 @@ run cmd input = do out <- pipeThroughCmd cmd (Left $ input) CreatePipe
 pipeThroughCmd :: String -> Either String StdStream -> StdStream -> IO (Either String StdStream)
 pipeThroughCmd cmd pipe_in pipe_out =
                    do d <- getCurrentDirectory
-                      (stdin_m, stdout_m, _, p) <- createProcess $
+                      (stdin_m, stdout_m, _, _ {-p-}) <- createProcess $
                         CreateProcess
                           { cmdspec = ShellCommand cmd
                           , cwd = Just d

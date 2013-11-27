@@ -25,6 +25,7 @@ cd = setCurrentDirectory
 
 -- | system cmd
 run' :: String -> IO ExitCode
+run' cmd | isJust (runWithExtractedCd cmd) = (fromJust $ runWithExtractedCd cmd) >> return ExitSuccess
 run' cmd = system cmd
 
 -- Returns Just with IO to run if there was a cd command, and Nothing if it should be run normally.

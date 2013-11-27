@@ -11,7 +11,7 @@ module Hell
 
 import Prelude hiding (catch)
 import Hell.Types
-import Hell.Prelude (run')
+import Hell.Prelude (run_)
 
 import Control.Exception
 import Control.Monad
@@ -57,7 +57,7 @@ startHell Config{..} =
                Just "\n" -> do io $ cancelInput hd
                                hd' <- newHaskelineSession
                                hellLoop username home hd'
-               Just line | line == "exit" || line == "\x4" -> return () -- Exit conditions.
+               Just line | line == "exit" || line == "\x4" -> io $ closeInput hd -- Exit conditions.
                Just line ->
                  do result <- runStatement (fromMaybe "" configRun) line
                     unless (null result)
@@ -127,7 +127,7 @@ runExpression stmt' = do
   where stmt = "return (" ++ toStringCode ++ " (" ++ (stripHaskellPrefix stmt') ++ ")) :: IO String"
 
 runInShell :: String -> Ghc String
-runInShell stmt = io $ run' stmt >> return ""
+runInShell stmt = io $ run_ stmt >>= putStr >> return ""
 
 -- | Short-hand utility.
 io :: IO a -> Ghc a
